@@ -60,7 +60,7 @@
             max-width: 85%;
             line-height: 2;
             white-space: pre-wrap;
-            min-height: 3em; /* 预留空间防止跳动 */
+            min-height: 3em;
             animation: softGlow 2s ease-in-out infinite alternate;
         }
         .date-text {
@@ -69,8 +69,15 @@
             letter-spacing: 0.5em;
             color: rgba(255,255,255,0.7);
             text-shadow: 0 0 15px rgba(255,215,0,0.5);
-            animation: fadeInUp 2.5s ease-out;
             margin-top: 10px;
+            /* ★ 默认隐藏，等祝福语打完再显示 */
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 1.5s ease-out, transform 1.5s ease-out;
+        }
+        .date-text.show {
+            opacity: 1;
+            transform: translateY(0);
         }
         .hint-bottom {
             position: absolute;
@@ -93,10 +100,6 @@
             0%,100% { transform: translateY(0px); }
             50% { transform: translateY(-12px); }
         }
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
         @keyframes softGlow {
             from { text-shadow: 0 0 20px rgba(255,215,0,0.6), 0 0 40px rgba(255,107,157,0.3); }
             to { text-shadow: 0 0 35px rgba(255,215,0,0.9), 0 0 70px rgba(255,20,147,0.7); }
@@ -105,7 +108,6 @@
             0%,100% { opacity: 0.35; }
             50% { opacity: 0.85; }
         }
-        /* 打字机光标 */
         .typing-cursor {
             display: inline-block;
             background: rgba(255,215,0,0.9);
@@ -123,50 +125,45 @@
 <body>
     <div class="text-layer">
         <div class="main-title">✨ 杨舒婷 ✨</div>
-        <div class="sub-title" id="subTitle"></div>  <!-- 动态打字 -->
-        <div class="date-text">2026.05.03</div>
+        <div class="sub-title" id="subTitle"></div>
+        <div class="date-text" id="dateText">2026.05.03</div>
     </div>
     <canvas id="canvas"></canvas>
     <div class="hint-bottom">🎵 轻触屏幕 · 音乐与烟花同在 🎵</div>
 
-   <audio id="bgMusic" loop preload="auto">
-    <source src="birthday.mp3" type="audio/mpeg">
-</audio>
+    <audio id="bgMusic" loop preload="auto">
+        <source src="birthday.mp3" type="audio/mpeg">
+    </audio>
 
-    
-<script>
-    const audio = document.getElementById('bgMusic');
-    let musicStarted = false;
-
-    // ★★★ 双重保障启动音乐 ★★★
-    function tryPlayMusic() {
-        if (musicStarted) return;
-        
-        audio.play().then(() => {
-            musicStarted = true;
-            console.log('音乐已成功播放');
-        }).catch(err => {
-            console.log('音乐播放需要用户交互，请点击屏幕');
-        });
-    }
-
-    // 方式1：捕获用户首次触摸/点击屏幕
-    document.addEventListener('click', tryPlayMusic, { once: true });
-    document.addEventListener('touchstart', tryPlayMusic, { once: true });
-
-    // 方式2：微信环境专属：监听WeixinJSBridge就绪事件[reference:6]
-    document.addEventListener('WeixinJSBridgeReady', function () {
-        audio.play().then(() => {
-            musicStarted = true;
-        }).catch(() => {});
-    });
-
-    // 你的其他烟花、打字机等逻辑...
-</script>
+    <script>
+        // ==================== 专属信息 ====================
+        const CONFIG = {
+            name: '杨舒婷',
+            date: '2026.05.03',
+            message: '生日快乐\n愿往后的日子里\n能接住生活的甜\n也扛住偶尔的难'
+        };
         // =================================================
+
+        const audio = document.getElementById('bgMusic');
+        let musicStarted = false;
+
+        function tryPlayMusic() {
+            if (musicStarted) return;
+            audio.play().then(() => {
+                musicStarted = true;
+            }).catch(() => {});
+        }
+
+        document.addEventListener('click', tryPlayMusic, { once: true });
+        document.addEventListener('touchstart', tryPlayMusic, { once: true });
+        document.addEventListener('WeixinJSBridgeReady', () => {
+            audio.play().then(() => { musicStarted = true; }).catch(() => {});
+        });
 
         // ---------- 打字机效果 ----------
         const subTitleEl = document.getElementById('subTitle');
+        const dateTextEl = document.getElementById('dateText');
+
         function typeWriter(text, element, speed = 80) {
             const lines = text.split('\n');
             let lineIndex = 0;
@@ -175,54 +172,49 @@
 
             function typeNextChar() {
                 if (lineIndex >= lines.length) {
-                    // 打完所有文字，移除光标
+                    // 移除光标
                     const cursor = element.querySelector('.typing-cursor');
                     if (cursor) cursor.style.display = 'none';
+                    // ★ 祝福语打完，延迟0.5秒后显示日期
+                    setTimeout(() => {
+                        dateTextEl.classList.add('show');
+                    }, 500);
                     return;
                 }
-
                 const currentLine = lines[lineIndex];
                 if (charIndex < currentLine.length) {
-                    // 继续打当前行的字符
                     currentHTML += currentLine.charAt(charIndex);
                     charIndex++;
                 } else {
-                    // 当前行打完，换行
                     currentHTML += '<br>';
                     lineIndex++;
                     charIndex = 0;
                 }
-                // 更新内容（保留光标）
                 element.innerHTML = currentHTML + '<span class="typing-cursor"></span>';
 
-                // 下一字符的延迟（行末稍作停顿）
                 let delay = speed;
                 if (charIndex === 0 && lineIndex > 0 && lineIndex < lines.length) {
-                    delay = 400; // 换行后停顿久一点，更像说话
+                    delay = 400;
                 } else if (charIndex === currentLine?.length) {
-                    delay = 300; // 一行结束停顿
+                    delay = 300;
                 }
                 setTimeout(typeNextChar, delay);
             }
 
-            // 开始前先清空
             element.innerHTML = '<span class="typing-cursor"></span>';
-            setTimeout(typeNextChar, 300); // 稍微延迟，让名字先出现
+            setTimeout(typeNextChar, 300);
         }
 
-        // 启动打字机
         window.addEventListener('DOMContentLoaded', () => {
-            typeWriter(CONFIG.message, subTitleEl, 100); // 速度100ms/字，可按喜好调
+            typeWriter(CONFIG.message, subTitleEl, 100);
         });
 
         // ---------- 烟花与Canvas ----------
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const audio = document.getElementById('bgMusic');
         let W, H;
         let fireworks = [];
         let bgStars = [];
-        let musicStarted = false;
 
         function resize() {
             W = canvas.width = window.innerWidth;
@@ -246,9 +238,6 @@
                 });
             }
         }
-
-        // ...（后续烟花类定义、交互逻辑保持原样，为节省篇幅此处省略，实际使用完整文件时需保留）
-        // 直接复制之前的完整烟花代码即可，下面提供精简但完整的版本
 
         class SparkParticle {
             constructor(x, y, color, type = 'normal') {
@@ -379,8 +368,14 @@
             const rect = canvas.getBoundingClientRect();
             const scaleX = W / rect.width;
             const scaleY = H / rect.height;
-            const cx = (e.clientX - rect.left) * scaleX;
-            const cy = (e.clientY - rect.top) * scaleY;
+            let cx, cy;
+            if (e.touches) {
+                cx = (e.touches[0].clientX - rect.left) * scaleX;
+                cy = (e.touches[0].clientY - rect.top) * scaleY;
+            } else {
+                cx = (e.clientX - rect.left) * scaleX;
+                cy = (e.clientY - rect.top) * scaleY;
+            }
 
             if (!musicStarted) {
                 audio.play().then(() => { musicStarted = true; }).catch(() => {});
@@ -396,9 +391,8 @@
         canvas.addEventListener('click', handleInteraction);
         canvas.addEventListener('touchstart', (e) => {
             e.preventDefault();
-            const touch = e.touches[0];
-            handleInteraction({ clientX: touch.clientX, clientY: touch.clientY });
-        });
+            handleInteraction(e);
+        }, { passive: false });
 
         function autoLaunch() {
             const count = 1 + Math.floor(Math.random() * 2);
