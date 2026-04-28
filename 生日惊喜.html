@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>杨舒婷 · 生日快乐</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #0a0a14;
+            font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        .text-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 20;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        .main-title {
+            font-size: clamp(3rem, 11vw, 5rem);
+            font-weight: 900;
+            letter-spacing: 0.15em;
+            background: linear-gradient(135deg,
+                #ffb3c6 0%, #ff6b9d 20%, #ff1493 40%,
+                #ffd700 60%, #ffaa00 80%, #ff6b9d 100%);
+            background-size: 300% 300%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 4s ease-in-out infinite, floatText 3s ease-in-out infinite;
+            filter: drop-shadow(0 0 25px rgba(255,107,157,0.6)) drop-shadow(0 0 50px rgba(255,215,0,0.4));
+            margin-bottom: 20px;
+        }
+        .sub-title {
+            font-size: clamp(1.3rem, 4.5vw, 1.8rem);
+            font-weight: 300;
+            letter-spacing: 0.25em;
+            color: rgba(255,255,255,0.95);
+            text-shadow: 0 0 20px rgba(255,215,0,0.8), 0 0 40px rgba(255,107,157,0.5);
+            margin-bottom: 20px;
+            text-align: center;
+            max-width: 85%;
+            line-height: 2;
+            white-space: pre-wrap;
+            min-height: 3em; /* 预留空间防止跳动 */
+            animation: softGlow 2s ease-in-out infinite alternate;
+        }
+        .date-text {
+            font-size: 1.2rem;
+            font-weight: 200;
+            letter-spacing: 0.5em;
+            color: rgba(255,255,255,0.7);
+            text-shadow: 0 0 15px rgba(255,215,0,0.5);
+            animation: fadeInUp 2.5s ease-out;
+            margin-top: 10px;
+        }
+        .hint-bottom {
+            position: absolute;
+            bottom: 35px;
+            width: 100%;
+            text-align: center;
+            color: rgba(255,255,255,0.55);
+            font-size: 0.9rem;
+            letter-spacing: 0.25em;
+            font-weight: 300;
+            z-index: 30;
+            pointer-events: none;
+            animation: softPulse 2.5s infinite;
+        }
+        @keyframes gradientShift {
+            0%,100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        @keyframes floatText {
+            0%,100% { transform: translateY(0px); }
+            50% { transform: translateY(-12px); }
+        }
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes softGlow {
+            from { text-shadow: 0 0 20px rgba(255,215,0,0.6), 0 0 40px rgba(255,107,157,0.3); }
+            to { text-shadow: 0 0 35px rgba(255,215,0,0.9), 0 0 70px rgba(255,20,147,0.7); }
+        }
+        @keyframes softPulse {
+            0%,100% { opacity: 0.35; }
+            50% { opacity: 0.85; }
+        }
+        /* 打字机光标 */
+        .typing-cursor {
+            display: inline-block;
+            background: rgba(255,215,0,0.9);
+            width: 2px;
+            height: 1.2em;
+            margin-left: 2px;
+            vertical-align: middle;
+            animation: blink 0.8s step-end infinite;
+        }
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="text-layer">
+        <div class="main-title">✨ 杨舒婷 ✨</div>
+        <div class="sub-title" id="subTitle"></div>  <!-- 动态打字 -->
+        <div class="date-text">2026.05.03</div>
+    </div>
+    <canvas id="canvas"></canvas>
+    <div class="hint-bottom">🎵 轻触屏幕 · 音乐与烟花同在 🎵</div>
+
+    <audio id="bgMusic" loop preload="auto">
+        <source src="https://archive.org/download/canon-in-d-major_202107/Canon%20in%20D%20Major.mp3" type="audio/mpeg">
+    </audio>
+
+    <script>
+        // ==================== 专属信息 ====================
+        const CONFIG = {
+            name: '杨舒婷',
+            date: '2026.05.03',
+            message: '生日快乐\n愿往后的日子里\n能接住生活的甜\n也扛住偶尔的难'
+        };
+        // =================================================
+
+        // ---------- 打字机效果 ----------
+        const subTitleEl = document.getElementById('subTitle');
+        function typeWriter(text, element, speed = 80) {
+            const lines = text.split('\n');
+            let lineIndex = 0;
+            let charIndex = 0;
+            let currentHTML = '';
+
+            function typeNextChar() {
+                if (lineIndex >= lines.length) {
+                    // 打完所有文字，移除光标
+                    const cursor = element.querySelector('.typing-cursor');
+                    if (cursor) cursor.style.display = 'none';
+                    return;
+                }
+
+                const currentLine = lines[lineIndex];
+                if (charIndex < currentLine.length) {
+                    // 继续打当前行的字符
+                    currentHTML += currentLine.charAt(charIndex);
+                    charIndex++;
+                } else {
+                    // 当前行打完，换行
+                    currentHTML += '<br>';
+                    lineIndex++;
+                    charIndex = 0;
+                }
+                // 更新内容（保留光标）
+                element.innerHTML = currentHTML + '<span class="typing-cursor"></span>';
+
+                // 下一字符的延迟（行末稍作停顿）
+                let delay = speed;
+                if (charIndex === 0 && lineIndex > 0 && lineIndex < lines.length) {
+                    delay = 400; // 换行后停顿久一点，更像说话
+                } else if (charIndex === currentLine?.length) {
+                    delay = 300; // 一行结束停顿
+                }
+                setTimeout(typeNextChar, delay);
+            }
+
+            // 开始前先清空
+            element.innerHTML = '<span class="typing-cursor"></span>';
+            setTimeout(typeNextChar, 300); // 稍微延迟，让名字先出现
+        }
+
+        // 启动打字机
+        window.addEventListener('DOMContentLoaded', () => {
+            typeWriter(CONFIG.message, subTitleEl, 100); // 速度100ms/字，可按喜好调
+        });
+
+        // ---------- 烟花与Canvas ----------
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const audio = document.getElementById('bgMusic');
+        let W, H;
+        let fireworks = [];
+        let bgStars = [];
+        let musicStarted = false;
+
+        function resize() {
+            W = canvas.width = window.innerWidth;
+            H = canvas.height = window.innerHeight;
+            initStars();
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        function initStars() {
+            bgStars = [];
+            const count = Math.floor((W * H) / 1800);
+            for (let i = 0; i < count; i++) {
+                bgStars.push({
+                    x: Math.random() * W,
+                    y: Math.random() * H,
+                    r: Math.random() * 2.2 + 0.5,
+                    alpha: Math.random(),
+                    speed: 0.005 + Math.random() * 0.025,
+                    hue: Math.random() < 0.2 ? 'gold' : 'white'
+                });
+            }
+        }
+
+        // ...（后续烟花类定义、交互逻辑保持原样，为节省篇幅此处省略，实际使用完整文件时需保留）
+        // 直接复制之前的完整烟花代码即可，下面提供精简但完整的版本
+
+        class SparkParticle {
+            constructor(x, y, color, type = 'normal') {
+                this.x = x; this.y = y; this.color = color; this.type = type;
+                const angle = Math.random() * Math.PI * 2;
+                const speed = type === 'golden' ? 3 + Math.random() * 10 : 1.5 + Math.random() * 7;
+                this.vx = Math.cos(angle) * speed;
+                this.vy = Math.sin(angle) * speed;
+                this.life = 1;
+                this.decay = type === 'golden' ? 0.006 + Math.random() * 0.018 : 0.01 + Math.random() * 0.025;
+                this.size = type === 'golden' ? 1.5 + Math.random() * 3.5 : 0.8 + Math.random() * 2.5;
+                this.gravity = 0.025;
+                this.friction = 0.985;
+                this.spiralAngle = 0;
+                this.spiralRadius = 0;
+                if (type === 'golden') {
+                    this.spiralRadius = 0.5 + Math.random() * 2.5;
+                    this.spiralAngle = Math.random() * Math.PI * 2;
+                }
+            }
+            update() {
+                if (this.type === 'golden') {
+                    this.spiralAngle += 0.2;
+                    this.vx += Math.cos(this.spiralAngle) * this.spiralRadius * 0.04;
+                    this.vy += Math.sin(this.spiralAngle) * this.spiralRadius * 0.04;
+                }
+                this.vx *= this.friction;
+                this.vy *= this.friction;
+                this.vy += this.gravity;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life -= this.decay;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size);
+                gradient.addColorStop(0, 'rgba(255,255,255,1)');
+                gradient.addColorStop(0.4, this.color);
+                gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = gradient;
+                ctx.shadowColor = this.color;
+                ctx.shadowBlur = this.size * 4;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Firework {
+            constructor(x, targetY, colorStyle) {
+                this.x = x;
+                this.y = H;
+                this.targetY = targetY;
+                this.color = colorStyle;
+                this.exploded = false;
+                this.particles = [];
+                this.trail = [];
+                this.speed = 4.5 + Math.random() * 9;
+                this.trailTimer = 0;
+            }
+            update() {
+                if (!this.exploded) {
+                    this.trailTimer++;
+                    if (this.trailTimer % 2 === 0) {
+                        this.trail.push({ x: this.x, y: this.y, life: 0.6 });
+                    }
+                    this.y -= this.speed;
+                    if (this.y <= this.targetY) {
+                        this.exploded = true;
+                        for (let i = 0; i < 45; i++) {
+                            this.particles.push(new SparkParticle(this.x, this.y, this.color, 'golden'));
+                        }
+                        const count = 70 + Math.floor(Math.random() * 90);
+                        for (let i = 0; i < count; i++) {
+                            this.particles.push(new SparkParticle(this.x, this.y, this.color, 'normal'));
+                        }
+                    }
+                }
+                this.trail = this.trail.filter(t => t.life > 0);
+                this.trail.forEach(t => t.life -= 0.025);
+                this.particles = this.particles.filter(p => p.life > 0);
+                this.particles.forEach(p => p.update());
+            }
+            draw(ctx) {
+                this.trail.forEach(t => {
+                    ctx.save();
+                    ctx.globalAlpha = t.life * 0.7;
+                    ctx.beginPath();
+                    ctx.arc(t.x, t.y, 2.2, 0, Math.PI*2);
+                    ctx.fillStyle = this.color;
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.restore();
+                });
+                if (!this.exploded) {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, 3.5, 0, Math.PI*2);
+                    ctx.fillStyle = '#fff';
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 20;
+                    ctx.fill();
+                    ctx.restore();
+                }
+                this.particles.forEach(p => p.draw(ctx));
+            }
+            isDone() {
+                return this.exploded && this.particles.length === 0 && this.trail.length === 0;
+            }
+        }
+
+        const colorPalette = [
+            '#FF6B9D', '#FF1493', '#FFD700', '#FFAA00', '#FF477E',
+            '#DDA0DD', '#87CEEB', '#FF8C69', '#FFB6C1', '#FF69B4'
+        ];
+
+        function launchFirework(x, y) {
+            const targetY = y || H * 0.12 + Math.random() * H * 0.45;
+            const fx = x || W * 0.1 + Math.random() * W * 0.8;
+            const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+            fireworks.push(new Firework(fx, targetY, color));
+        }
+
+        function handleInteraction(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = W / rect.width;
+            const scaleY = H / rect.height;
+            const cx = (e.clientX - rect.left) * scaleX;
+            const cy = (e.clientY - rect.top) * scaleY;
+
+            if (!musicStarted) {
+                audio.play().then(() => { musicStarted = true; }).catch(() => {});
+            }
+
+            for (let i = 0; i < 4; i++) {
+                setTimeout(() => {
+                    launchFirework(cx + (Math.random()-0.5)*180, cy + (Math.random()-0.5)*80);
+                }, i * 60);
+            }
+        }
+
+        canvas.addEventListener('click', handleInteraction);
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            const touch = e.touches[0];
+            handleInteraction({ clientX: touch.clientX, clientY: touch.clientY });
+        });
+
+        function autoLaunch() {
+            const count = 1 + Math.floor(Math.random() * 2);
+            for (let i = 0; i < count; i++) {
+                setTimeout(launchFirework, i * 400);
+            }
+            setTimeout(autoLaunch, 2800 + Math.random() * 3500);
+        }
+        autoLaunch();
+
+        function drawStars() {
+            bgStars.forEach(s => {
+                s.alpha += s.speed;
+                if (s.alpha > 1 || s.alpha < 0.15) s.speed *= -1;
+                ctx.save();
+                ctx.globalAlpha = s.alpha;
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+                ctx.fillStyle = s.hue === 'gold' ? '#FFD700' : '#FFFFFF';
+                ctx.shadowColor = s.hue === 'gold' ? '#FFD700' : '#FFFFFF';
+                ctx.shadowBlur = s.r * 3;
+                ctx.fill();
+                ctx.restore();
+            });
+        }
+
+        function animate() {
+            ctx.fillStyle = 'rgba(10, 10, 20, 0.22)';
+            ctx.fillRect(0, 0, W, H);
+            drawStars();
+            fireworks = fireworks.filter(fw => !fw.isDone());
+            fireworks.forEach(fw => {
+                fw.update();
+                fw.draw(ctx);
+            });
+            requestAnimationFrame(animate);
+        }
+        animate();
+    </script>
+</body>
+</html>
