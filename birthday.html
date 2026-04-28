@@ -133,13 +133,39 @@
         <source src="https://archive.org/download/canon-in-d-major_202107/Canon%20in%20D%20Major.mp3" type="audio/mpeg">
     </audio>
 
-    <script>
-        // ==================== 专属信息 ====================
-        const CONFIG = {
-            name: '杨舒婷',
-            date: '2026.05.03',
-            message: '生日快乐\n愿往后的日子里\n能接住生活的甜\n也扛住偶尔的难'
-        };
+  <audio id="bgMusic" loop preload="auto">
+    <source src="https://archive.org/download/canon-in-d-major_202107/Canon%20in%20D%20Major.mp3" type="audio/mpeg">
+</audio>
+
+<script>
+    const audio = document.getElementById('bgMusic');
+    let musicStarted = false;
+
+    // ★★★ 双重保障启动音乐 ★★★
+    function tryPlayMusic() {
+        if (musicStarted) return;
+        
+        audio.play().then(() => {
+            musicStarted = true;
+            console.log('音乐已成功播放');
+        }).catch(err => {
+            console.log('音乐播放需要用户交互，请点击屏幕');
+        });
+    }
+
+    // 方式1：捕获用户首次触摸/点击屏幕
+    document.addEventListener('click', tryPlayMusic, { once: true });
+    document.addEventListener('touchstart', tryPlayMusic, { once: true });
+
+    // 方式2：微信环境专属：监听WeixinJSBridge就绪事件[reference:6]
+    document.addEventListener('WeixinJSBridgeReady', function () {
+        audio.play().then(() => {
+            musicStarted = true;
+        }).catch(() => {});
+    });
+
+    // 你的其他烟花、打字机等逻辑...
+</script>
         // =================================================
 
         // ---------- 打字机效果 ----------
